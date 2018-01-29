@@ -24,66 +24,6 @@ connection.connect(function(err)
   readProducts();//list the products for sale
 });
 
-function createProduct() 
-{
-  console.log("Inserting a new product...\n");
-  var query = connection.query(
-    "INSERT INTO products SET ?",
-    {
-      flavor: "Rocky Road",
-      price: 3.0,
-      quantity: 50
-    },
-    function(err, res) 
-    {
-      console.log(res.affectedRows + " product inserted!\n");
-    }
-  );
-
-  // logs the actual query being run
-  console.log(query.sql);
-}
-
-function updateProduct() 
-{
-  console.log("Updating all Rocky Road quantities...\n");
-  var query = connection.query(
-    "UPDATE products SET ? WHERE ?",
-    [
-      {
-        flavor: "Chocolate",
-        price: 100,
-        quantity: 25
-      },
-      {
-        id: 1
-      }
-    ],
-    function(err, res) 
-    {
-      console.log(res.affectedRows + " products updated!\n");
-    }
-  );
-
-  // logs the actual query being run
-  console.log(query.sql);
-}
-
-function deleteProduct() 
-{
-  console.log("Deleting all strawberry icecream...\n");
-  connection.query(
-    "DELETE FROM products WHERE ?",
-    {
-      flavor: "strawberry"
-    },
-    function(err, res) 
-    {
-      console.log(res.affectedRows + " products deleted!\n");
-    }
-  );
-}
-
 function readProducts() 
 {//showing all products for sale
   console.log("Selecting all products...\n");

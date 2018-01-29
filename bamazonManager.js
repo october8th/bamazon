@@ -21,7 +21,7 @@ connection.connect(function(err)
 {
   if (err) throw err;
   console.log("connected as id " + connection.threadId + "\n");
-  readProducts();//list the products for sale
+  showMenu();//list the manager menu options
 });
 
 function createProduct() 
@@ -84,7 +84,7 @@ function deleteProduct()
   );
 }
 
-function readProducts() 
+function viewProducts() 
 {//showing all products for sale
   console.log("Selecting all products...\n");
   connection.query("SELECT * FROM products", function(err, res) {
@@ -93,27 +93,24 @@ function readProducts()
     //console.log(res);
     //for each item in my list - show me the price
     res.forEach(printItem);
-    takeOrder();
+    showMenu();
   });
 }
 
-function placeOrder(item,quantityLeft,bought)
+function addMoreInventory(item,quantity)
 {
-  console.log("Placing your order for " + bought + " x Item ID: " + item);
-  console.log("There is now  " + quantityLeft + " x Item ID: " + item + " left.");
+  console.log("Adding  " + quantity + " x Item ID: " + item);
   connection.query(
-    "UPDATE products SET ? WHERE ?",
+    "UPDATE products SET stock = stock + ? WHERE ?",
     [
-      {
-        stock: quantityLeft
-      },
+      quantity,
       {
         item_id: item
       }
     ],
     function(err, res) 
     {
-      checkOut(item,bought)
+      showMenu();
     }
   );
 }
@@ -169,30 +166,133 @@ function checkItem(item,quantity)
     if(res.length > 0)//if the item is in stock, make the sale
     {
       //console.log("that's a valid item");
-      checkStock(item,quantity);
+      addMoreInventory(item,quantity);
     }
     else//we don't have that many.  let's try again?
     {
       console.log("That's not a valid item. Please choose a valid Item ID.");
-      takeOrder();
+      addInventory();
     }
   });
 }
 
-function printItem(item,index)
-{//give me the id, name and price and show it pretty
-  if(item.product_name.length > 15)
+function addMoreProduct(name,department,price,stock)
+{
+  connection.query(
+    "INSERT INTO products SET ?",
+    {
+      product_name: name,
+      price: price,
+      stock: stock,
+      department_name:department
+    },
+    function(err, res) 
+    {
+      if (err) throw err;
+      console.log(name + "added.");
+      showMenu();
+    });
+ }
+
+
+function addProduct()
+{
+  var product_name = " ";
+  var product_department = " ";
+  var product_price = 0;
+  var product_stock = 0;
+  inquirer.prompt([
   {
-    console.log("ID: " + item.item_id + "\t" + item.product_name + "\t" + item.price);
+    type: "input",
+    name: "name",
+    message: "Enter a name for the new product. Type 0 for the main menu."
   }
-  else
+  ]).then(function(answer) 
   {
-    console.log("ID: " + item.item_id + "\t" + item.product_name + "\t\t" + item.price);
-  }
+    product_name = answer.name;
+    if(product_name == 0)
+    {
+      showMenu();
+    }
+    else
+    {
+      inquirer.prompt([
+      {
+        type: "input",
+        name: "department",
+        message: "Enter a department for the new product. Type 0 for the main menu."
+      }
+      ]).then(function(answer) 
+      {
+        product_department = answer.department;
+        if(product_department == 0)
+        {
+          showMenu();
+        }
+        else
+        {
+          inquirer.prompt([
+          {
+            type: "input",
+            name: "price",
+            message: "What is the price? Type 0 for the main menu.",
+            validate: function(aNumber)
+            {
+              if(aNumber.match(/^\s*-?(\d+(\.\d{1,2})?|\.\d{1,2})\s*$/))//is it a decimal up to 4 places?
+              {
+                return true;
+              }
+              else
+              return "Please enter an item price ex: 34.55";//we are totally not cool 
+            }
+          }
+          ]).then(function(answer) 
+          {
+            product_price = answer.price;
+            if(product_price == 0)
+            {
+              showMenu();
+            }
+            else
+            {
+              inquirer.prompt([
+              {
+                type: "input",
+                name: "stock",
+                message: "How many are in stock? Type 0 for the main menu.",
+                validate: function(aNumber)
+                {
+                  if(aNumber.match(/^\d+$/))//is it even a number?
+                  {
+                    return true;
+                  }
+                  else
+                  return "Please type an integer";//we are totally not cool 
+                }
+              }
+              ]).then(function(answer) 
+              {
+                product_stock = answer.stock;
+                if(product_price == 0)
+                {
+                  showMenu();
+                }
+                else
+                {
+                  addMoreProduct(product_name,product_department,product_price,product_stock)
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+  });
 }
 
 
-function takeOrder()//fill in player object(s)
+
+function addInventory()
 {
   var itemId = 0;
   var itemQuantity = 0;
@@ -200,7 +300,7 @@ function takeOrder()//fill in player object(s)
   {
     type: "input",
     name: "whatID",
-    message: "What product ID would you like? Type 0 to quit.",
+    message: "What product ID would you like to add inventory to? Type 0 for the main menu.",
     validate: function(aNumber)
     {
       if(aNumber.match(/^\d+$/))//is it even a number?
@@ -216,8 +316,7 @@ function takeOrder()//fill in player object(s)
     itemId = answer.whatID;
     if(itemId == 0)
     {
-      connection.end();
-      return;
+      showMenu();
     }
     else
     {
@@ -225,7 +324,7 @@ function takeOrder()//fill in player object(s)
       {
         type: "input",
         name: "howMany",
-        message: "How many would you like? Type 0 to quit.",
+        message: "How many would you like to add? Type 0 for the main menu.",
         validate: function(aNumber)
         {
           if(aNumber.match(/^\d+$/))//is it even a number?
@@ -241,14 +340,88 @@ function takeOrder()//fill in player object(s)
         itemQuantity = answer.howMany;
         if(itemQuantity == 0)
         {
-          connection.end();
-          return;
+          showMenu();
         }
         else
         {
           checkItem(itemId, itemQuantity);
         }
       });
+    }
+  });
+}
+
+
+
+
+
+
+function ViewLow(quantity)
+{
+  connection.query("SELECT * FROM products WHERE stock < ?",quantity, function(err, res) 
+  {
+    if (err) throw err;
+    // Log all results of the SELECT statement
+    //console.log(res);
+    //for each item in my list - show me the price
+    //console.log(res[0]);
+    //console.log(parseInt(res[0].stock));
+    if(res.length == 0)
+    {
+      console.log("No items are low");
+    }
+    else
+    {
+      console.log("The following items are low");
+      res.forEach(printItem);
+    }
+    showMenu();
+  });
+}
+
+function printItem(item,index)
+{//give me the id, name and price and show it pretty
+  if(item.product_name.length > 15)
+  {
+    console.log("ID: " + item.item_id + "\t" + item.product_name + "\t" + item.price + "\t" + " Stock: " + item.stock + "\t" + "Department: " + item.department_name);
+  }
+  else
+  {
+    console.log("ID: " + item.item_id + "\t" + item.product_name + "\t\t" + item.price + "\t" + " Stock: " + item.stock + "\t" +"Department: " + item.department_name);
+  }
+}
+
+
+function showMenu()//display the manager options
+{
+  inquirer.prompt([
+  {
+    type: "list",
+    message: "Welcome manager.  What would you like to do?",
+    choices: ["View_Products", "View_Low_Inventory", "Add_to_Inventory", "Add_New_Product","Quit"],
+    name: "menuChoice"
+  }
+  ])
+  .then(function(answer) 
+  {
+    //which option did thay choose?
+    switch(answer.menuChoice) //which command did i pick?
+    {//call the chosen command
+      case "View_Products":
+        viewProducts();
+          break;
+      case "View_Low_Inventory":
+        ViewLow(5);
+          break;
+      case "Add_to_Inventory":
+        addInventory();
+          break;
+      case "Add_New_Product":
+        addProduct();
+          break;
+      case "Quit":
+        connection.end();
+        return;
     }
   });
 }
