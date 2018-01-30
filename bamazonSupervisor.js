@@ -2,6 +2,9 @@
 var mysql = require("mysql");
 //use inquirer to prompt for input and give output
 var inquirer = require("inquirer");
+//let's make pretty tables
+const {table} = require('table');
+
 //create a connection to the database
 var connection = mysql.createConnection(
 {//connection details
@@ -98,41 +101,133 @@ function checkItem(item,quantity)
   });
 }
 
-function addMoreProduct(name,department,price,stock)
+function createAnotherDepartment(name,cost)
 {
   connection.query(
-    "INSERT INTO products SET ?",
+    "INSERT INTO departments SET ?",
     {
-      product_name: name,
-      price: price,
-      stock: stock,
-      department_name:department
+      department_name: name,
+      over_head_costs: cost
     },
     function(err, res) 
     {
       if (err) throw err;
       console.log(name + " added.");
-      showMenu();
+      viewDepartments(); 
     });
  }
 
 
-function addProduct()
+function viewDepartments()
 {
-  var product_name = " ";
-  var product_department = " ";
-  var product_price = 0;
-  var product_stock = 0;
+  connection.query("SELECT * FROM departments", function(err, res) 
+  {
+  if (err) throw err;
+  let config,data,output;
+  var testing = [["Dept ID","Dept Name","Over Head Costs"]];
+  for (var i = 0; i < res.length; i++) 
+  {
+    testing.push([res[i].department_id,res[i].department_name,res[i].over_head_costs]);
+  }
+  data = testing;
+  config = 
+  {
+    columns: 
+    {
+      0: 
+      {
+          alignment: 'left',
+          minWidth: 10
+      },
+      1: 
+      {
+          alignment: 'left',
+          minWidth: 10
+      },
+      2: 
+      {
+          alignment: 'right',
+          minWidth: 10
+      }
+    },
+    drawHorizontalLine: (index, size) => {
+        return index === 0 || index === 1 || index === size;
+    }
+  };
+  output = table(data, config);
+  console.log(output);
+  showMenu();
+  }); 
+ }
+
+function viewDepartmentSales()
+{
+  var myQuery = "select departments.department_id,departments.department_name,departments.over_head_costs,(SELECT FORMAT(SUM(product_sales),2) FROM products where products.department_name = departments.department_name) AS product_sales, (SELECT FORMAT(SUM(product_sales),2) FROM products where products.department_name = departments.department_name) - departments.over_head_costs AS total_profit from departments INNER JOIN products ON departments.department_name = products.department_name group by departments.department_id";
+  connection.query(myQuery, function(err, res) 
+  {
+  if (err) throw err;
+  let config,data,output;
+  var testing = [["Dept ID","Dept Name","Over Head Costs","Product Sales","Total Profit"]];
+  for (var i = 0; i < res.length; i++) 
+  {
+    testing.push([res[i].department_id,res[i].department_name,res[i].over_head_costs,res[i].product_sales,res[i].total_profit.toFixed(2)]);
+  }
+  data = testing;
+  config = 
+  {
+    columns: 
+    {
+      0: 
+      {
+          alignment: 'left',
+          minWidth: 10
+      },
+      1: 
+      {
+          alignment: 'left',
+          minWidth: 10
+      },
+      2: 
+      {
+          alignment: 'right',
+          minWidth: 10
+      },
+      3: 
+      {
+          alignment: 'right',
+          minWidth: 10
+      },
+      4: 
+      {
+          alignment: 'right',
+          minWidth: 10
+      }
+    },
+    drawHorizontalLine: (index, size) => {
+        return index === 0 || index === 1 || index === size;
+    }
+  };
+  output = table(data, config);
+  console.log(output);
+  showMenu();
+  }); 
+ }
+
+
+function createDepartment()
+{
+  var department_name = " ";
+  var over_head_costs = 0;
   inquirer.prompt([
   {
     type: "input",
     name: "name",
-    message: "Enter a name for the new product. Type 0 for the main menu."
+    message: "Enter a name for the new department. Type 0 for the main menu."
   }
   ]).then(function(answer) 
   {
-    product_name = answer.name;
-    if(product_name == 0)
+    department_name = answer.name;
+    if(department_name == 0)
     {
       showMenu();
     }
@@ -141,71 +236,28 @@ function addProduct()
       inquirer.prompt([
       {
         type: "input",
-        name: "department",
-        message: "Enter a department for the new product. Type 0 for the main menu."
+        name: "cost",
+        message: "What is the over head cost for this department? Type 0 for the main menu.",
+        validate: function(aNumber)
+        {
+          if(aNumber.match(/^\s*-?(\d+(\.\d{1,2})?|\.\d{1,2})\s*$/))//is it a decimal up to 4 places?
+          {
+            return true;
+          }
+          else
+          return "Please enter a cost ex: 34.55";//we are totally not cool 
+        }
       }
       ]).then(function(answer) 
       {
-        product_department = answer.department;
-        if(product_department == 0)
+        over_head_costs = answer.cost;
+        if(over_head_costs == 0)
         {
           showMenu();
         }
         else
         {
-          inquirer.prompt([
-          {
-            type: "input",
-            name: "price",
-            message: "What is the price? Type 0 for the main menu.",
-            validate: function(aNumber)
-            {
-              if(aNumber.match(/^\s*-?(\d+(\.\d{1,2})?|\.\d{1,2})\s*$/))//is it a decimal up to 4 places?
-              {
-                return true;
-              }
-              else
-              return "Please enter an item price ex: 34.55";//we are totally not cool 
-            }
-          }
-          ]).then(function(answer) 
-          {
-            product_price = answer.price;
-            if(product_price == 0)
-            {
-              showMenu();
-            }
-            else
-            {
-              inquirer.prompt([
-              {
-                type: "input",
-                name: "stock",
-                message: "How many are in stock? Type 0 for the main menu.",
-                validate: function(aNumber)
-                {
-                  if(aNumber.match(/^\d+$/))//is it even a number?
-                  {
-                    return true;
-                  }
-                  else
-                  return "Please type an integer";//we are totally not cool 
-                }
-              }
-              ]).then(function(answer) 
-              {
-                product_stock = answer.stock;
-                if(product_price == 0)
-                {
-                  showMenu();
-                }
-                else
-                {
-                  addMoreProduct(product_name,product_department,product_price,product_stock)
-                }
-              });
-            }
-          });
+          createAnotherDepartment(department_name,over_head_costs)
         }
       });
     }
@@ -319,8 +371,8 @@ function showMenu()//display the manager options
   inquirer.prompt([
   {
     type: "list",
-    message: "Welcome manager.  What would you like to do?",
-    choices: ["View_Products", "View_Low_Inventory", "Add_to_Inventory", "Add_New_Product","Quit"],
+    message: "Welcome supervisor.  What would you like to do?",
+    choices: ["View_Department_Sales", "Create_New_Department","View_Department_List","Quit"],
     name: "menuChoice"
   }
   ])
@@ -329,17 +381,14 @@ function showMenu()//display the manager options
     //which option did thay choose?
     switch(answer.menuChoice) //which command did i pick?
     {//call the chosen command
-      case "View_Products":
-        viewProducts();
+      case "View_Department_Sales":
+        viewDepartmentSales();
           break;
-      case "View_Low_Inventory":
-        ViewLow(5);
+      case "Create_New_Department":
+        createDepartment();
           break;
-      case "Add_to_Inventory":
-        addInventory();
-          break;
-      case "Add_New_Product":
-        addProduct();
+      case "View_Department_List":
+        viewDepartments();
           break;
       case "Quit":
         connection.end();

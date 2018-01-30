@@ -40,7 +40,7 @@ function readProducts()
 function placeOrder(item,quantityLeft,bought)
 {
   console.log("Placing your order for " + bought + " x Item ID: " + item);
-  console.log("There is now  " + quantityLeft + " x Item ID: " + item + " left.");
+  console.log("Stock for Item ID: " + item + " is now: " + quantityLeft);
   connection.query(
     "UPDATE products SET ? WHERE ?",
     [
@@ -71,8 +71,27 @@ function checkOut(item,bought)
     //console.log(parseInt(res[0].stock));
     myPrice = res[0].price;
     console.log("Your total is $" + (myPrice * bought).toFixed(2));
-    takeOrder();
+    addToSales(item,myPrice * bought);
   });
+}
+
+function addToSales(item,sale)
+{
+  console.log("Adding  a " + sale.toFixed(2) + " sale for Item ID: " + item);
+  connection.query(
+    "UPDATE products SET product_sales = product_sales + ? WHERE ?",
+    [
+      sale,
+      {
+        item_id: item
+      }
+    ],
+    function(err, res) 
+    {
+      if (err) throw err;
+      takeOrder();
+    }
+  );
 }
 
 
