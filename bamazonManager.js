@@ -2,6 +2,8 @@
 var mysql = require("mysql");
 //use inquirer to prompt for input and give output
 var inquirer = require("inquirer");
+//let's make pretty tables
+const {table} = require('table');
 //create a connection to the database
 var connection = mysql.createConnection(
 {//connection details
@@ -20,7 +22,7 @@ var connection = mysql.createConnection(
 connection.connect(function(err) 
 {
   if (err) throw err;
-  console.log("connected as id " + connection.threadId + "\n");
+  //console.log("connected as id " + connection.threadId + "\n");
   showMenu();//list the manager menu options
 });
 
@@ -32,7 +34,49 @@ function viewProducts()
     // Log all results of the SELECT statement
     //console.log(res);
     //for each item in my list - show me the price
-    res.forEach(printItem);
+    let config,data,output;
+    var testing = [["Product ID","Name","Price","Stock","Department"]];
+    for (var i = 0; i < res.length; i++) 
+    {
+      testing.push([res[i].item_id,res[i].product_name,res[i].price.toFixed(2),res[i].stock,res[i].department_name]);
+    }
+    data = testing;
+    config = 
+    {
+      columns: 
+      {
+        0: 
+        {
+            alignment: 'left',
+            minWidth: 10
+        },
+        1: 
+        {
+            alignment: 'left',
+            minWidth: 10
+        },
+        2: 
+        {
+            alignment: 'left',
+            minWidth: 10
+        },
+        3: 
+        {
+            alignment: 'left',
+            minWidth: 10
+        },
+        4: 
+        {
+            alignment: 'left',
+            minWidth: 10
+        }
+      },
+      drawHorizontalLine: (index, size) => {
+          return index === 0 || index === 1 || index === size;
+      }
+    };
+    output = table(data, config);
+    console.log(output);
     showMenu();
   });
 }
@@ -53,31 +97,6 @@ function addMoreInventory(item,quantity)
       showMenu();
     }
   );
-}
-
-
-function checkStock(item,quantity)
-{
-  var myQuantity = 0;
-  connection.query("SELECT * FROM products WHERE item_id = ?",item, function(err, res) 
-  {
-    if (err) throw err;
-    // Log all results of the SELECT statement
-    //console.log(res);
-    //for each item in my list - show me the price
-    //console.log(res[0]);
-    //console.log(parseInt(res[0].stock));
-    myQuantity = res[0].stock;
-    if(myQuantity >= quantity)//if the item is in stock, make the sale
-    {
-      placeOrder(item,myQuantity - quantity,quantity);
-    }
-    else//we don't have that many.  let's try again?
-    {
-      console.log("I'm sorry, we only have " + myQuantity + " of those.");
-      takeOrder();
-    }
-  });
 }
 
 function checkItem(item,quantity)
@@ -295,22 +314,52 @@ function ViewLow(quantity)
     else
     {
       console.log("The following items are low");
-      res.forEach(printItem);
+      let config,data,output;
+      var testing = [["Product ID","Name","Price","Stock","Department"]];
+      for (var i = 0; i < res.length; i++) 
+      {
+        testing.push([res[i].item_id,res[i].product_name,res[i].price.toFixed(2),res[i].stock,res[i].department_name]);
+      }
+      data = testing;
+      config = 
+      {
+        columns: 
+        {
+          0: 
+          {
+              alignment: 'left',
+              minWidth: 10
+          },
+          1: 
+          {
+              alignment: 'left',
+              minWidth: 10
+          },
+          2: 
+          {
+              alignment: 'left',
+              minWidth: 10
+          },
+          3: 
+          {
+              alignment: 'left',
+              minWidth: 10
+          },
+          4: 
+          {
+              alignment: 'left',
+              minWidth: 10
+          }
+        },
+        drawHorizontalLine: (index, size) => {
+            return index === 0 || index === 1 || index === size;
+        }
+      };
+      output = table(data, config);
+      console.log(output);
     }
     showMenu();
   });
-}
-
-function printItem(item,index)
-{//give me the id, name and price and show it pretty
-  if(item.product_name.length > 15)
-  {
-    console.log("ID: " + item.item_id + "\t" + item.product_name + "\t" + item.price + "\t" + " Stock: " + item.stock + "\t" + "Department: " + item.department_name);
-  }
-  else
-  {
-    console.log("ID: " + item.item_id + "\t" + item.product_name + "\t\t" + item.price + "\t" + " Stock: " + item.stock + "\t" +"Department: " + item.department_name);
-  }
 }
 
 

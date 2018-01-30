@@ -23,83 +23,9 @@ var connection = mysql.createConnection(
 connection.connect(function(err) 
 {
   if (err) throw err;
-  console.log("connected as id " + connection.threadId + "\n");
+  //console.log("connected as id " + connection.threadId + "\n");
   showMenu();//list the manager menu options
 });
-
-function viewProducts() 
-{//showing all products for sale
-  console.log("Selecting all products...\n");
-  connection.query("SELECT * FROM products", function(err, res) {
-    if (err) throw err;
-    // Log all results of the SELECT statement
-    //console.log(res);
-    //for each item in my list - show me the price
-    res.forEach(printItem);
-    showMenu();
-  });
-}
-
-function addMoreInventory(item,quantity)
-{
-  console.log("Adding  " + quantity + " x Item ID: " + item);
-  connection.query(
-    "UPDATE products SET stock = stock + ? WHERE ?",
-    [
-      quantity,
-      {
-        item_id: item
-      }
-    ],
-    function(err, res) 
-    {
-      showMenu();
-    }
-  );
-}
-
-
-function checkStock(item,quantity)
-{
-  var myQuantity = 0;
-  connection.query("SELECT * FROM products WHERE item_id = ?",item, function(err, res) 
-  {
-    if (err) throw err;
-    // Log all results of the SELECT statement
-    //console.log(res);
-    //for each item in my list - show me the price
-    //console.log(res[0]);
-    //console.log(parseInt(res[0].stock));
-    myQuantity = res[0].stock;
-    if(myQuantity >= quantity)//if the item is in stock, make the sale
-    {
-      placeOrder(item,myQuantity - quantity,quantity);
-    }
-    else//we don't have that many.  let's try again?
-    {
-      console.log("I'm sorry, we only have " + myQuantity + " of those.");
-      takeOrder();
-    }
-  });
-}
-
-function checkItem(item,quantity)
-{
-  connection.query("SELECT * FROM products WHERE item_id = ?",item, function(err, res) 
-  {
-    if (err) throw err;
-    if(res.length > 0)//if the item is in stock, make the sale
-    {
-      //console.log("that's a valid item");
-      addMoreInventory(item,quantity);
-    }
-    else//we don't have that many.  let's try again?
-    {
-      console.log("That's not a valid item. Please choose a valid Item ID.");
-      addInventory();
-    }
-  });
-}
 
 function createAnotherDepartment(name,cost)
 {
@@ -162,7 +88,13 @@ function viewDepartments()
 
 function viewDepartmentSales()
 {
-  var myQuery = "select departments.department_id,departments.department_name,departments.over_head_costs,(SELECT FORMAT(SUM(product_sales),2) FROM products where products.department_name = departments.department_name) AS product_sales, (SELECT FORMAT(SUM(product_sales),2) FROM products where products.department_name = departments.department_name) - departments.over_head_costs AS total_profit from departments INNER JOIN products ON departments.department_name = products.department_name group by departments.department_id";
+  var myQuery = `select departments.department_id,departments.department_name,departments.over_head_costs,
+  (SELECT FORMAT(SUM(product_sales),2) FROM products 
+  where products.department_name = departments.department_name) AS product_sales, 
+  (SELECT FORMAT(SUM(product_sales),2) FROM products 
+  where products.department_name = departments.department_name) - departments.over_head_costs AS total_profit from departments 
+  LEFT JOIN products ON departments.department_name = products.department_name 
+  group by departments.department_id`;
   connection.query(myQuery, function(err, res) 
   {
   if (err) throw err;
@@ -263,108 +195,6 @@ function createDepartment()
     }
   });
 }
-
-
-
-function addInventory()
-{
-  var itemId = 0;
-  var itemQuantity = 0;
-  inquirer.prompt([
-  {
-    type: "input",
-    name: "whatID",
-    message: "What product ID would you like to add inventory to? Type 0 for the main menu.",
-    validate: function(aNumber)
-    {
-      if(aNumber.match(/^\d+$/))//is it even a number?
-      {
-        return true;
-      }
-      else
-      return "Please type a product ID Number";//we are totally not cool 
-    }
-  }
-  ]).then(function(answer) 
-  {
-    itemId = answer.whatID;
-    if(itemId == 0)
-    {
-      showMenu();
-    }
-    else
-    {
-      inquirer.prompt([
-      {
-        type: "input",
-        name: "howMany",
-        message: "How many would you like to add? Type 0 for the main menu.",
-        validate: function(aNumber)
-        {
-          if(aNumber.match(/^\d+$/))//is it even a number?
-          {
-            return true;
-          }
-          else
-          return "Please enter a Number - How many would you like?";//we are totally not cool 
-        }
-      }
-      ]).then(function(answer) 
-      {
-        itemQuantity = answer.howMany;
-        if(itemQuantity == 0)
-        {
-          showMenu();
-        }
-        else
-        {
-          checkItem(itemId, itemQuantity);
-        }
-      });
-    }
-  });
-}
-
-
-
-
-
-
-function ViewLow(quantity)
-{
-  connection.query("SELECT * FROM products WHERE stock < ?",quantity, function(err, res) 
-  {
-    if (err) throw err;
-    // Log all results of the SELECT statement
-    //console.log(res);
-    //for each item in my list - show me the price
-    //console.log(res[0]);
-    //console.log(parseInt(res[0].stock));
-    if(res.length == 0)
-    {
-      console.log("No items are low");
-    }
-    else
-    {
-      console.log("The following items are low");
-      res.forEach(printItem);
-    }
-    showMenu();
-  });
-}
-
-function printItem(item,index)
-{//give me the id, name and price and show it pretty
-  if(item.product_name.length > 15)
-  {
-    console.log("ID: " + item.item_id + "\t" + item.product_name + "\t" + item.price + "\t" + " Stock: " + item.stock + "\t" + "Department: " + item.department_name);
-  }
-  else
-  {
-    console.log("ID: " + item.item_id + "\t" + item.product_name + "\t\t" + item.price + "\t" + " Stock: " + item.stock + "\t" +"Department: " + item.department_name);
-  }
-}
-
 
 function showMenu()//display the manager options
 {

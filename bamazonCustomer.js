@@ -2,6 +2,8 @@
 var mysql = require("mysql");
 //use inquirer to prompt for input and give output
 var inquirer = require("inquirer");
+//let's make pretty tables
+const {table} = require('table');
 //create a connection to the database
 var connection = mysql.createConnection(
 {//connection details
@@ -20,19 +22,51 @@ var connection = mysql.createConnection(
 connection.connect(function(err) 
 {
   if (err) throw err;
-  console.log("connected as id " + connection.threadId + "\n");
+  //console.log("connected as id " + connection.threadId + "\n");
   readProducts();//list the products for sale
 });
 
 function readProducts() 
 {//showing all products for sale
-  console.log("Selecting all products...\n");
+  //console.log("Selecting all products...\n");
   connection.query("SELECT * FROM products", function(err, res) {
     if (err) throw err;
     // Log all results of the SELECT statement
     //console.log(res);
     //for each item in my list - show me the price
-    res.forEach(printItem);
+    let config,data,output;
+    var testing = [["Item ID","Name","Price"]];
+    for (var i = 0; i < res.length; i++) 
+    {
+      testing.push([res[i].item_id,res[i].product_name,res[i].price.toFixed(2)]);
+    }
+    data = testing;
+    config = 
+    {
+      columns: 
+      {
+        0: 
+        {
+            alignment: 'left',
+            minWidth: 10
+        },
+        1: 
+        {
+            alignment: 'left',
+            minWidth: 10
+        },
+        2: 
+        {
+            alignment: 'right',
+            minWidth: 10
+        }
+      },
+      drawHorizontalLine: (index, size) => {
+          return index === 0 || index === 1 || index === size;
+      }
+    };
+    output = table(data, config);
+    console.log(output);
     takeOrder();
   });
 }
@@ -136,18 +170,6 @@ function checkItem(item,quantity)
       takeOrder();
     }
   });
-}
-
-function printItem(item,index)
-{//give me the id, name and price and show it pretty
-  if(item.product_name.length > 15)
-  {
-    console.log("ID: " + item.item_id + "\t" + item.product_name + "\t" + item.price);
-  }
-  else
-  {
-    console.log("ID: " + item.item_id + "\t" + item.product_name + "\t\t" + item.price);
-  }
 }
 
 
