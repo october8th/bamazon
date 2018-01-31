@@ -57,7 +57,7 @@ function viewProducts()
         },
         2: 
         {
-            alignment: 'left',
+            alignment: 'right',
             minWidth: 10
         },
         3: 
@@ -337,7 +337,7 @@ function ViewLow(quantity)
           },
           2: 
           {
-              alignment: 'left',
+              alignment: 'right',
               minWidth: 10
           },
           3: 
